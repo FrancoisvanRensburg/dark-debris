@@ -125,8 +125,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       position: sticky;
       top: 0;
       z-index: 100;
-      background: color-mix(in srgb, var(--bg) 95%, transparent);
-      backdrop-filter: blur(12px);
+      background: var(--bg);
       border-bottom: 1px solid var(--border);
       padding: 0.9rem 2.5rem;
     }
