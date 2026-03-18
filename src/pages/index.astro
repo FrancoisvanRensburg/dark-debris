@@ -1,0 +1,628 @@
+---
+import lpData from '../data/lp_ratings.json';
+
+const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dark Debris — LP Catalogue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #080706;
+      --surface:     #110f0e;
+      --surface-2:   #1a1715;
+      --border:      #2c2825;
+      --text:        #f0e6d8;
+      --text-muted:  #7a6f65;
+      --text-dim: #786d6a;
+      --accent:      #e87c2a;
+      --accent-glow: rgba(232, 124, 42, 0.15);
+      --spotify:     #1db954;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Barlow Condensed', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grain overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.45;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      padding: 3rem 2.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .site-header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, var(--accent) 40%, transparent 100%);
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 2rem;
+    }
+
+    .logo {
+      line-height: 0.88;
+      user-select: none;
+    }
+
+    .logo-eyebrow {
+      font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+      font-weight: 400;
+      letter-spacing: 0.45em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .logo-name {
+      font-size: clamp(3.5rem, 9vw, 7.5rem);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      line-height: 0.88;
+    }
+
+    .logo-name span { color: var(--accent); }
+
+    .header-stats {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .stat-number {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 800;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .stat-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 0.2rem;
+    }
+
+    /* ── CONTROLS ── */
+    .controls {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: color-mix(in srgb, var(--bg) 95%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 2.5rem;
+    }
+
+    .controls-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .controls-top {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 180px;
+      max-width: 380px;
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    input[type="search"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.48rem 0.75rem 0.48rem 2.1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="search"]::placeholder { color: var(--text-dim); }
+    input[type="search"]:focus { border-color: var(--accent); }
+
+    .sort-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 0.45rem 2rem 0.45rem 0.7rem;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a6f65'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+    }
+
+    .sort-select:focus { border-color: var(--accent); }
+
+    .results-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    .results-badge strong { color: var(--accent); }
+
+    /* Genre pills */
+    .genre-filters {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .genre-pill {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      padding: 0.18rem 0.55rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.12s;
+      line-height: 1.5;
+    }
+
+    .genre-pill:hover { border-color: var(--text-muted); color: var(--text); }
+    .genre-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+    /* ── CATALOGUE ── */
+    .catalogue {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 2.5rem 5rem;
+    }
+
+    .table-header {
+      display: grid;
+      grid-template-columns: 3.5rem 14rem 1fr 5.5rem 7rem 9rem 2.5rem;
+      gap: 0 1rem;
+      padding: 0.55rem 0.75rem;
+      margin-top: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .record-row {
+      display: grid;
+      grid-template-columns: 3.5rem 14rem 1fr 5.5rem 7rem 9rem 2.5rem;
+      gap: 0 1rem;
+      padding: 0.72rem 0.75rem;
+      border-bottom: 1px solid var(--surface-2);
+      align-items: center;
+      transition: background 0.1s;
+    }
+
+    .record-row:hover { background: var(--surface); }
+
+    .record-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      text-align: right;
+      padding-right: 0.25rem;
+    }
+
+    .record-artist {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .record-title {
+      font-size: 0.88rem;
+      font-weight: 300;
+      color: #b0a396;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .record-price {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    /* Rating */
+    .record-rating {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .rating-bar {
+      width: 36px;
+      height: 2px;
+      background: var(--surface-2);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .rating-bar-fill {
+      position: absolute;
+      top: 0; left: 0;
+      height: 100%;
+      background: var(--accent);
+    }
+
+    .rating-score {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .rating-votes {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.56rem;
+      color: var(--text-dim);
+    }
+
+    .rating-none {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    /* Genre tags */
+    .record-genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      overflow: hidden;
+      max-height: 3rem;
+    }
+
+    .genre-tag {
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0.1rem 0.3rem;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      white-space: nowrap;
+      line-height: 1.5;
+    }
+
+    .style-tag {
+      font-size: 0.58rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.1rem 0.3rem;
+      border: 1px solid var(--surface-2);
+      color: var(--text-dim);
+      white-space: nowrap;
+      line-height: 1.5;
+    }
+
+    /* Spotify */
+    .spotify-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(29, 185, 84, 0.1);
+      border: 1px solid rgba(29, 185, 84, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--spotify);
+      text-decoration: none;
+      transition: all 0.18s;
+      flex-shrink: 0;
+    }
+
+    .spotify-btn:hover {
+      background: rgba(29, 185, 84, 0.25);
+      border-color: var(--spotify);
+      transform: scale(1.2);
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 5rem 2rem;
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: none;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1100px) {
+      .table-header { display: none; }
+      .record-row {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        padding: 1rem 0.75rem;
+        gap: 0.3rem 1rem;
+      }
+      .record-num { display: none; }
+      .record-row { position: relative; padding-right: 3rem; }
+      .record-artist { grid-column: 1 / -1; font-size: 1rem; }
+      .record-title  { grid-column: 1 / -1; }
+      .record-price  { grid-column: 1; }
+      .record-rating { grid-column: 2; flex-direction: row; align-items: center; }
+      .record-genres { grid-column: 1 / -1; }
+      .spotify-cell  { position: absolute; top: 1rem; right: 0.75rem; }
+    }
+
+    @media (max-width: 640px) {
+      .site-header { padding: 2rem 1.25rem 1.5rem; }
+      .header-inner { flex-direction: column; align-items: flex-start; }
+      .header-stats { text-align: left; }
+      .controls { padding: 0.75rem 1.25rem; }
+      .catalogue { padding: 0 1.25rem 4rem; }
+      .record-row { grid-template-columns: 1fr; }
+      .record-title { grid-column: 1; }
+      .record-rating { grid-column: 1; }
+      .spotify-cell { grid-column: 1; justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-eyebrow">LP Catalogue</div>
+        <div class="logo-name">DARK <span>DEBRIS</span></div>
+      </div>
+      <div class="header-stats">
+        <div class="stat-number">{lpData.length}</div>
+        <div class="stat-label">Records · ZAR</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="controls-inner">
+      <div class="controls-top">
+        <div class="search-wrap">
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input type="search" id="search-input" placeholder="Search artist or title…" autocomplete="off" spellcheck="false" />
+        </div>
+        <select class="sort-select" id="sort-select">
+          <option value="artist">Artist A → Z</option>
+          <option value="artist-desc">Artist Z → A</option>
+          <option value="price-asc">Price: Low → High</option>
+          <option value="price-desc">Price: High → Low</option>
+          <option value="rating-desc">Rating: Best First</option>
+        </select>
+        <div class="results-badge">
+          <strong id="visible-count">{lpData.length}</strong>&nbsp;records
+        </div>
+      </div>
+      <div class="genre-filters" id="genre-filters">
+        <button class="genre-pill active" data-genre="all">All</button>
+        {allGenres.map(genre => (
+          <button class="genre-pill" data-genre={genre}>{genre}</button>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- CATALOGUE -->
+  <main class="catalogue">
+    <div class="table-header">
+      <span style="text-align:right">#</span>
+      <span>Artist</span>
+      <span>Title</span>
+      <span>Price</span>
+      <span>Rating</span>
+      <span>Genre / Style</span>
+      <span></span>
+    </div>
+
+    <div id="records-list">
+      {lpData.map((lp, i) => (
+        <div
+          class="record-row"
+          data-genres={JSON.stringify(lp.genres)}
+          data-artist={lp.artist}
+          data-title={lp.title}
+          data-price={String(lp.price)}
+          data-rating={String(lp.discogsRating ?? 0)}
+        >
+          <div class="record-num">{String(i + 1).padStart(3, '0')}</div>
+
+          <div class="record-artist">{lp.artist}</div>
+
+          <div class="record-title">{lp.title}</div>
+
+          <div class="record-price">R&nbsp;{lp.price.toLocaleString('en-ZA')}</div>
+
+          <div class="record-rating">
+            {lp.discogsRating !== null ? (
+              <div>
+                <div class="rating-row">
+                  <div class="rating-bar">
+                    <div class="rating-bar-fill" style={`width:${(lp.discogsRating / 5) * 100}%`}></div>
+                  </div>
+                  <span class="rating-score">{lp.discogsRating.toFixed(2)}</span>
+                </div>
+                {lp.discogsVotes && (
+                  <span class="rating-votes">{lp.discogsVotes.toLocaleString()} votes</span>
+                )}
+              </div>
+            ) : (
+              <span class="rating-none">—</span>
+            )}
+          </div>
+
+          <div class="record-genres">
+            {lp.genres.map(g => <span class="genre-tag">{g}</span>)}
+            {lp.styles.slice(0, 2).map(s => <span class="style-tag">{s}</span>)}
+          </div>
+
+          <div class="spotify-cell">
+            {lp.spotifyUrl && (
+              <a href={lp.spotifyUrl} target="_blank" rel="noopener noreferrer" class="spotify-btn" title="Listen on Spotify">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                </svg>
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div class="empty-state" id="empty-state">No records found.</div>
+  </main>
+
+  <script>
+    const rows        = Array.from(document.querySelectorAll<HTMLElement>('.record-row'));
+    const searchInput = document.getElementById('search-input')  as HTMLInputElement;
+    const sortSelect  = document.getElementById('sort-select')   as HTMLSelectElement;
+    const genreFilters= document.getElementById('genre-filters') as HTMLElement;
+    const visibleCount= document.getElementById('visible-count') as HTMLElement;
+    const emptyState  = document.getElementById('empty-state')   as HTMLElement;
+    const recordsList = document.getElementById('records-list')  as HTMLElement;
+
+    let activeGenre = 'all';
+    let searchQuery = '';
+    let sortOrder   = 'artist';
+
+    function render() {
+      const q = searchQuery.toLowerCase();
+
+      let visible = rows.filter(row => {
+        const genres: string[] = JSON.parse(row.dataset.genres || '[]');
+        const artist = (row.dataset.artist || '').toLowerCase();
+        const title  = (row.dataset.title  || '').toLowerCase();
+        return (activeGenre === 'all' || genres.includes(activeGenre))
+            && (!q || artist.includes(q) || title.includes(q));
+      });
+
+      visible.sort((a, b) => {
+        switch (sortOrder) {
+          case 'artist':      return (a.dataset.artist || '').localeCompare(b.dataset.artist || '');
+          case 'artist-desc': return (b.dataset.artist || '').localeCompare(a.dataset.artist || '');
+          case 'price-asc':   return +a.dataset.price! - +b.dataset.price!;
+          case 'price-desc':  return +b.dataset.price! - +a.dataset.price!;
+          case 'rating-desc': return +b.dataset.rating! - +a.dataset.rating!;
+          default: return 0;
+        }
+      });
+
+      rows.forEach(r => (r.style.display = 'none'));
+      visible.forEach((row, i) => {
+        row.style.display = '';
+        const numEl = row.querySelector('.record-num');
+        if (numEl) numEl.textContent = String(i + 1).padStart(3, '0');
+        recordsList.appendChild(row);
+      });
+
+      visibleCount.textContent = String(visible.length);
+      emptyState.style.display  = visible.length === 0 ? 'block' : 'none';
+    }
+
+    searchInput.addEventListener('input', e => {
+      searchQuery = (e.target as HTMLInputElement).value;
+      render();
+    });
+
+    sortSelect.addEventListener('change', e => {
+      sortOrder = (e.target as HTMLSelectElement).value;
+      render();
+    });
+
+    genreFilters.addEventListener('click', e => {
+      const pill = (e.target as HTMLElement).closest<HTMLElement>('.genre-pill');
+      if (!pill) return;
+      activeGenre = pill.dataset.genre || 'all';
+      document.querySelectorAll('.genre-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      render();
+    });
+  </script>
+
+</body>
+</html>
