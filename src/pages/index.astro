@@ -18,15 +18,16 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:          #080706;
-      --surface:     #110f0e;
-      --surface-2:   #1a1715;
-      --border:      #2c2825;
-      --text:        #f0e6d8;
-      --text-muted:  #7a6f65;
-      --text-dim: #786d6a;
-      --accent:      #e87c2a;
-      --accent-glow: rgba(232, 124, 42, 0.15);
+      --bg:          #0b0d09;
+      --surface:     #131510;
+      --surface-2:   #1c1f13;
+      --border:      #2d3120;
+      --text:        #e2d9c0;
+      --text-muted:  #7a7a5e;
+      --text-dim:    #545447;
+      --accent:      #c4952a;
+      --accent-glow: rgba(196, 149, 42, 0.12);
+      --accent-2:    #6b7a4a;
       --spotify:     #1db954;
     }
 
@@ -53,17 +54,11 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 
     /* ── HEADER ── */
     .site-header {
-      padding: 3rem 2.5rem 2rem;
+      padding: 2.5rem 2.5rem 2rem;
+      border-top: 3px solid var(--accent);
       border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 var(--accent-2);
       position: relative;
-    }
-
-    .site-header::after {
-      content: '';
-      position: absolute;
-      bottom: -1px; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent 0%, var(--accent) 40%, transparent 100%);
     }
 
     .header-inner {
@@ -81,12 +76,13 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     }
 
     .logo-eyebrow {
-      font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(0.55rem, 1.2vw, 0.65rem);
       font-weight: 400;
-      letter-spacing: 0.45em;
+      letter-spacing: 0.3em;
       text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 0.4rem;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
     }
 
     .logo-name {
@@ -120,12 +116,24 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       margin-top: 0.2rem;
     }
 
+    .stat-stamp {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.55rem;
+      color: var(--text-dim);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-top: 0.6rem;
+      border-top: 1px solid var(--border);
+      padding-top: 0.4rem;
+    }
+
     /* ── CONTROLS ── */
     .controls {
       position: sticky;
       top: 0;
       z-index: 100;
       background: var(--bg);
+      border-top: 1px solid var(--accent-2);
       border-bottom: 1px solid var(--border);
       padding: 0.9rem 2.5rem;
     }
@@ -183,6 +191,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 0.85rem;
       font-weight: 600;
+      min-width: 10rem;
       letter-spacing: 0.06em;
       padding: 0.45rem 2rem 0.45rem 0.7rem;
       cursor: pointer;
@@ -213,21 +222,21 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     }
 
     .genre-pill {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.09em;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      padding: 0.18rem 0.55rem;
+      padding: 0.2rem 0.5rem;
       border: 1px solid var(--border);
       background: transparent;
-      color: var(--text-muted);
+      color: var(--text-dim);
       cursor: pointer;
       transition: all 0.12s;
       line-height: 1.5;
     }
 
-    .genre-pill:hover { border-color: var(--text-muted); color: var(--text); }
+    .genre-pill:hover { border-color: var(--accent-2); color: var(--accent-2); }
     .genre-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
 
     /* ── CATALOGUE ── */
@@ -258,10 +267,13 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       padding: 0.72rem 0.75rem;
       border-bottom: 1px solid var(--surface-2);
       align-items: center;
-      transition: background 0.1s;
+      transition: background 0.1s, box-shadow 0.1s;
     }
 
-    .record-row:hover { background: var(--surface); }
+    .record-row:hover {
+      background: var(--surface);
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
 
     .record-thumb {
       width: 36px;
@@ -301,7 +313,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     .record-title {
       font-size: 0.88rem;
       font-weight: 300;
-      color: #b0a396;
+      color: var(--text-muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -328,26 +340,30 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       gap: 0.4rem;
     }
 
-    .rating-bar {
-      width: 36px;
-      height: 2px;
-      background: var(--surface-2);
-      position: relative;
+    .rating-ticks {
+      display: flex;
+      gap: 2px;
+      align-items: center;
       flex-shrink: 0;
     }
 
-    .rating-bar-fill {
-      position: absolute;
-      top: 0; left: 0;
-      height: 100%;
+    .rating-tick {
+      width: 5px;
+      height: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+
+    .rating-tick.on {
       background: var(--accent);
+      border-color: var(--accent);
     }
 
     .rating-score {
       font-family: 'Space Mono', monospace;
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       font-weight: 700;
-      color: var(--text);
+      color: var(--text-muted);
     }
 
     .rating-votes {
@@ -372,13 +388,14 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     }
 
     .genre-tag {
-      font-size: 0.58rem;
-      font-weight: 600;
-      letter-spacing: 0.07em;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.55rem;
+      font-weight: 400;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      padding: 0.1rem 0.3rem;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+      padding: 0.1rem 0.35rem;
+      border: 1px solid var(--accent-2);
+      color: var(--accent-2);
       white-space: nowrap;
       line-height: 1.5;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -391,12 +408,13 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     }
 
     .style-tag {
-      font-size: 0.58rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.55rem;
       font-weight: 400;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      padding: 0.1rem 0.3rem;
-      border: 1px solid var(--surface-2);
+      padding: 0.1rem 0.35rem;
+      border: 1px solid var(--border);
       color: var(--text-dim);
       white-space: nowrap;
       line-height: 1.5;
@@ -404,11 +422,10 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 
     /* Spotify */
     .spotify-btn {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      background: rgba(29, 185, 84, 0.1);
-      border: 1px solid rgba(29, 185, 84, 0.25);
+      width: 28px;
+      height: 28px;
+      background: rgba(29, 185, 84, 0.08);
+      border: 1px solid rgba(29, 185, 84, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -429,9 +446,22 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       padding: 5rem 2rem;
       text-align: center;
       font-family: 'Space Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--text-muted);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       display: none;
+      border-top: 1px solid var(--border);
+    }
+
+    .empty-state::before {
+      content: '— ';
+      color: var(--accent);
+    }
+
+    .empty-state::after {
+      content: ' —';
+      color: var(--accent);
     }
 
     /* ── RESPONSIVE ── */
@@ -473,12 +503,13 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
   <header class="site-header">
     <div class="header-inner">
       <div class="logo">
-        <div class="logo-eyebrow">LP Catalogue</div>
+        <div class="logo-eyebrow">CAT. NO. 001 · LP Catalogue</div>
         <div class="logo-name">DARK <span>DEBRIS</span></div>
       </div>
       <div class="header-stats">
         <div class="stat-number">{lpData.length}</div>
         <div class="stat-label">Records · ZAR</div>
+        <div class="stat-stamp">ZAR · Physical · Est. 2024</div>
       </div>
     </div>
   </header>
@@ -555,8 +586,10 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
             {lp.discogsRating !== null ? (
               <div>
                 <div class="rating-row">
-                  <div class="rating-bar">
-                    <div class="rating-bar-fill" style={`width:${(lp.discogsRating / 5) * 100}%`}></div>
+                  <div class="rating-ticks">
+                    {[1,2,3,4,5].map(n => (
+                      <div class={`rating-tick${n <= Math.round(lp.discogsRating!) ? ' on' : ''}`}></div>
+                    ))}
                   </div>
                   <span class="rating-score">{lp.discogsRating.toFixed(2)}</span>
                 </div>
@@ -590,10 +623,10 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     <div class="empty-state" id="empty-state">No records found.</div>
   </main>
 
-  <footer style="border-top: 1px solid #2c2825; padding: 2rem 2.5rem; text-align: center;">
-    <p style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #7a6f65; line-height: 2;">
+  <footer style="border-top: 1px solid var(--border); padding: 2rem 2.5rem; text-align: center;">
+    <p style="font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--text-dim); line-height: 2.2; letter-spacing: 0.06em; text-transform: uppercase;">
       © {new Date().getFullYear()} Dark Debris · All records are physical · No streaming was harmed in the making of this site<br />
-      <span style="color: #3e3530;">Prices subject to change · Availability subject to someone else buying it first · Condition subject to interpretation</span>
+      <span style="color: var(--border);">Prices subject to change · Availability subject to someone else buying it first · Condition subject to interpretation</span>
     </p>
   </footer>
 
