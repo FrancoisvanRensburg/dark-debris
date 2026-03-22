@@ -384,7 +384,6 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       flex-wrap: wrap;
       gap: 0.2rem;
       overflow: hidden;
-      max-height: 3rem;
     }
 
     .genre-tag {
@@ -676,6 +675,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       visibleCount.textContent = String(visible.length);
       emptyState.style.display  = visible.length === 0 ? 'block' : 'none';
 
+      // Sync active-filter highlight on genre tags
       document.querySelectorAll<HTMLElement>('.genre-tag').forEach(tag => {
         tag.classList.toggle('active-filter', activeGenre !== 'all' && tag.dataset.genre === activeGenre);
       });
