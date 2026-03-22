@@ -239,7 +239,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 
     .table-header {
       display: grid;
-      grid-template-columns: 3.5rem 14rem 1fr 5.5rem 7rem 9rem 2.5rem;
+      grid-template-columns: 3.5rem 3rem 14rem 1fr 5.5rem 7rem 9rem 2.5rem;
       gap: 0 1rem;
       padding: 0.55rem 0.75rem;
       margin-top: 1.5rem;
@@ -253,7 +253,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 
     .record-row {
       display: grid;
-      grid-template-columns: 3.5rem 14rem 1fr 5.5rem 7rem 9rem 2.5rem;
+      grid-template-columns: 3.5rem 3rem 14rem 1fr 5.5rem 7rem 9rem 2.5rem;
       gap: 0 1rem;
       padding: 0.72rem 0.75rem;
       border-bottom: 1px solid var(--surface-2);
@@ -262,6 +262,23 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     }
 
     .record-row:hover { background: var(--surface); }
+
+    .record-thumb {
+      width: 36px;
+      height: 36px;
+      object-fit: cover;
+      display: block;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .record-thumb-placeholder {
+      width: 36px;
+      height: 36px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
 
     .record-num {
       font-family: 'Space Mono', monospace;
@@ -364,6 +381,13 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       color: var(--text-muted);
       white-space: nowrap;
       line-height: 1.5;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .genre-tag.active-filter {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-glow);
     }
 
     .style-tag {
@@ -414,18 +438,19 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     @media (max-width: 1100px) {
       .table-header { display: none; }
       .record-row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 3rem 1fr 1fr;
         grid-template-rows: auto auto auto;
         padding: 1rem 0.75rem;
         gap: 0.3rem 1rem;
       }
       .record-num { display: none; }
       .record-row { position: relative; padding-right: 3rem; }
-      .record-artist { grid-column: 1 / -1; font-size: 1rem; }
-      .record-title  { grid-column: 1 / -1; }
-      .record-price  { grid-column: 1; }
-      .record-rating { grid-column: 2; flex-direction: row; align-items: center; }
-      .record-genres { grid-column: 1 / -1; }
+      .record-thumb { grid-row: 1 / 3; align-self: start; }
+      .record-artist { grid-column: 2 / -1; font-size: 1rem; }
+      .record-title  { grid-column: 2 / -1; }
+      .record-price  { grid-column: 2; }
+      .record-rating { grid-column: 3; flex-direction: row; align-items: center; }
+      .record-genres { grid-column: 2 / -1; }
       .spotify-cell  { position: absolute; top: 1rem; right: 0.75rem; }
     }
 
@@ -435,10 +460,10 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       .header-stats { text-align: left; }
       .controls { padding: 0.75rem 1.25rem; }
       .catalogue { padding: 0 1.25rem 4rem; }
-      .record-row { grid-template-columns: 1fr; }
-      .record-title { grid-column: 1; }
-      .record-rating { grid-column: 1; }
-      .spotify-cell { grid-column: 1; justify-content: flex-start; }
+      .record-row { grid-template-columns: 3rem 1fr; }
+      .record-title { grid-column: 2; }
+      .record-rating { grid-column: 2; }
+      .spotify-cell { grid-column: 2; justify-content: flex-start; }
     }
   </style>
 </head>
@@ -492,6 +517,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
   <main class="catalogue">
     <div class="table-header">
       <span style="text-align:right">#</span>
+      <span></span>
       <span>Artist</span>
       <span>Title</span>
       <span>Price</span>
@@ -511,6 +537,13 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
           data-rating={String(lp.discogsRating ?? 0)}
         >
           <div class="record-num">{String(i + 1).padStart(3, '0')}</div>
+
+          <div>
+            {lp.thumb
+              ? <img class="record-thumb" src={lp.thumb} alt={`${lp.artist} – ${lp.title}`} loading="lazy" />
+              : <div class="record-thumb-placeholder"></div>
+            }
+          </div>
 
           <div class="record-artist">{lp.artist}</div>
 
@@ -537,7 +570,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
           </div>
 
           <div class="record-genres">
-            {lp.genres.map(g => <span class="genre-tag">{g}</span>)}
+            {lp.genres.map(g => <span class="genre-tag" data-genre={g}>{g}</span>)}
             {lp.styles.slice(0, 2).map(s => <span class="style-tag">{s}</span>)}
           </div>
 
@@ -609,6 +642,10 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 
       visibleCount.textContent = String(visible.length);
       emptyState.style.display  = visible.length === 0 ? 'block' : 'none';
+
+      document.querySelectorAll<HTMLElement>('.genre-tag').forEach(tag => {
+        tag.classList.toggle('active-filter', activeGenre !== 'all' && tag.dataset.genre === activeGenre);
+      });
     }
 
     searchInput.addEventListener('input', e => {
