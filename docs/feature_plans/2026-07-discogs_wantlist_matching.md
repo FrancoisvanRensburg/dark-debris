@@ -1,0 +1,174 @@
+# Feature: Discogs Login + Wantlist/Collection Matching & Suggested Purchases
+
+## Overview
+
+Let a visitor log in with their Discogs account, fetch their **wantlist** and
+their **collection** (records they already own), and show them:
+
+1. **Wantlist matches** — catalogue records on their wantlist that are in stock.
+2. **Already owned** — catalogue records they already have (badged, and excluded
+   from suggestions so we never recommend something they own).
+3. **Suggested purchases** — catalogue records they neither own nor have wanted,
+   ranked by how well they fit the genres/styles the user actually collects
+   (profile built from **both** wantlist and collection), weighted by community
+   rating.
+
+Every record they own or want counts once toward the taste profile — neither
+list is weighted above the other. The collection additionally filters out records
+they already have.
+
+Depends on the enrichment pipeline
+([`2026-07-catalog_data_enrichment.md`](./2026-07-catalog_data_enrichment.md))
+for the `masterId` join key and per‑record `genres`/`styles`.
+
+## Scope
+
+**Included**
+
+- "Log in with Discogs" (OAuth 1.0a).
+- Fetching + caching the user's wantlist **and** collection.
+- Match engine: wantlist matches + owned detection (by `masterId`) and
+  affinity‑scored suggestions that exclude owned/wanted records.
+- UI for the three lists above.
+
+**NOT included**
+
+- Any checkout/payment/reservation flow.
+- Writing back to Discogs (marking items bought, editing the wantlist/collection).
+- Non‑Discogs identity providers.
+
+## Technical Approach
+
+### This feature requires a backend — the site is currently static
+
+The site today is a **static** Astro build served from Cloudflare assets
+(`wrangler.jsonc` → `./dist`). That cannot support this feature, for two
+independent reasons:
+
+1. **Discogs OAuth 1.0a needs a consumer secret** that must never ship to the
+   browser, and the request signing must happen server‑side.
+2. **The Discogs API sends no CORS headers**, so the browser cannot call it
+   directly — every call must be proxied through our own origin.
+
+**Decision:** the first PR introduces a server runtime via **Astro SSR with the
+`@astrojs/cloudflare` adapter** (output: `"server"`). This is the biggest
+architectural change in the plan — the site goes from static assets to an SSR
+Worker.
+
+### OAuth 1.0a flow
+
+- Register a Discogs app; store consumer key/secret as Cloudflare **secrets**.
+- `/auth/discogs` → get an OAuth request token, redirect to Discogs authorize.
+- `/auth/callback` → exchange for an access token + secret.
+- Persist the access token in an **encrypted, httpOnly session cookie** — no DB
+  required. (Optionally cache in Cloudflare **KV** keyed by session.)
+
+### Wantlist + collection fetch
+
+- Wantlist: `GET /users/{username}/wants?per_page=100`, paginated.
+- Collection: `GET /users/{username}/collection/folders/0/releases?per_page=100`,
+  paginated (folder `0` = "All").
+- Both endpoints return items whose `basic_information` already carries
+  `master_id`, `genres`, `styles`, and `thumb` — the same shape — so we can match
+  **and** score without any per‑release calls.
+- **Either list can run to thousands of items.** At 100/page that's dozens of
+  requests each (≈ N/100), so both need the same handling: paginate, cache the
+  normalised result per session (KV, with a TTL / manual "refresh" so we don't
+  re‑page on every visit), and respect the 60 req/min limit. The rate limit is
+  **per token**, i.e. per logged‑in user, so one user's large library only slows
+  *their own* first load; it doesn't contend with other users. First load of a
+  big library should be async (fetch in the background, show progress) rather
+  than blocking the page.
+
+### Match engine
+
+Build three `Set`s of `master_id`s: `wanted`, `owned`, and (derived) everything
+in the catalogue.
+
+- **Wantlist matches:** catalogue rows whose `masterId` ∈ `wanted`. For rows with
+  `masterId === 0`, fall back to normalised artist+title comparison.
+- **Already owned:** catalogue rows whose `masterId` ∈ `owned` — badge them and
+  keep them out of suggestions.
+- **Suggested purchases:**
+  1. Build an affinity profile by counting each genre/style once per record
+     across wantlist **and** collection — **no per‑source multiplier**, every
+     record is an equal vote. (A larger list therefore contributes more total
+     votes, which is intended: it means the user simply has more records of that
+     taste, not that the list is privileged.)
+  2. Normalise against the catalogue base rate to avoid popularity bias: weight
+     each genre/style by how **over‑represented** it is in the user's library vs.
+     the catalogue average (TF‑IDF‑style lift), so suggestions reflect what's
+     *distinctive* about the user rather than "everyone likes Rock".
+  3. Score each catalogue row *not owned and not wanted* = Σ (lift‑weighted)
+     affinity of its genres/styles, boosted by normalised `discogsRating`.
+  4. Sort desc, return top N.
+
+## PR Breakdown
+
+### PR 1: SSR foundation + Discogs OAuth login
+
+- **Branch:** `feat/discogs-oauth`
+- **Status:** [ ] Not started
+- **Description:** Add the `@astrojs/cloudflare` SSR adapter, the
+  `/auth/discogs` + `/auth/callback` routes, encrypted session cookie, and a
+  "Log in with Discogs" button + logged‑in state in the header.
+- **Files affected:** `astro.config.mjs`, `wrangler.jsonc`, `src/pages/auth/*`,
+  `src/lib/discogs/oauth.ts`, `src/pages/index.astro`
+
+### PR 2: Wantlist + collection fetch + caching
+
+- **Branch:** `feat/discogs-library-fetch`
+- **Status:** [ ] Not started
+- **Depends on:** PR 1
+- **Description:** `/api/library` endpoint that fetches (paginated) and caches
+  the logged‑in user's wantlist and collection, returning normalised items
+  (`masterId`, `genres`, `styles`, `thumb`, artist/title) tagged as
+  `wanted`/`owned`.
+- **Files affected:** `src/pages/api/library.ts`, `src/lib/discogs/library.ts`
+
+### PR 3: Match engine + wantlist/owned UI
+
+- **Branch:** `feat/library-matches`
+- **Status:** [ ] Not started
+- **Depends on:** PR 2, plus catalogue `masterId` data (enrichment plan PR 2)
+- **Description:** The `masterId` join (artist+title fallback) producing
+  "On your wantlist, in stock" and "Already in your collection" (badged) views.
+- **Files affected:** `src/lib/matching/match.ts`, `src/pages/index.astro` (or a
+  new `matches` view)
+
+### PR 4: Suggested purchases scoring + UI
+
+- **Branch:** `feat/suggested-purchases`
+- **Status:** [ ] Not started
+- **Depends on:** PR 3
+- **Description:** Genre/style affinity scoring from the combined
+  wantlist+collection profile, excluding owned/wanted, rating‑boosted, rendered
+  as a "Suggested for you" ranked list.
+- **Files affected:** `src/lib/matching/suggest.ts`, `src/pages/index.astro`
+
+## Open Questions
+
+- **Session storage:** encrypted cookie only, or cookie + KV cache for the
+  wantlist/collection?
+- **Base‑rate normalisation:** confirm the TF‑IDF‑style lift (genre/style
+  weighted by over‑representation vs. catalogue average) is the right way to
+  counter popularity bias, and tune how strongly it's applied. (Per‑source
+  weighting is settled: none — each record is one equal vote.)
+- **`masterId === 0` fallback:** how aggressive should artist+title fuzzy
+  matching be before we risk false positives?
+- **Scoring:** exact weights for genre vs style vs rating; should price factor in
+  (e.g. surface affordable strong matches)?
+- **Edge cases:** private wantlists/collections, very large wantlists *or*
+  collections (pagination cost — both can be thousands of items), users with an
+  empty wantlist or collection.
+
+## Notes
+
+- Discogs is **OAuth 1.0a**, not OAuth 2 — request signing is mandatory; pick a
+  small signing helper rather than a generic OAuth2 client.
+- The whole matching layer runs on data already in the catalogue JSON + the
+  `basic_information` returned by the wantlist and collection endpoints, so no
+  extra Discogs calls per record are needed at match time — keeps us well under
+  the rate limit.
+- Wantlist and collection items share the same `basic_information` shape, so one
+  normaliser handles both; they differ only by the `wanted`/`owned` tag.

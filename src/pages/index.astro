@@ -1,5 +1,5 @@
 ---
-import lpData from '../data/lp_ratings.json';
+import lpData from '../data/catalog.json';
 
 const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 ---
@@ -28,7 +28,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       --accent:      #c4952a;
       --accent-glow: rgba(196, 149, 42, 0.12);
       --accent-2:    #6b7a4a;
-      --spotify:     #1db954;
+      --discogs:     #b7b0a0;
     }
 
     html { scroll-behavior: smooth; }
@@ -419,25 +419,43 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       line-height: 1.5;
     }
 
-    /* Spotify */
-    .spotify-btn {
+    /* Discogs link */
+    .discogs-btn {
       width: 28px;
       height: 28px;
-      background: rgba(29, 185, 84, 0.08);
-      border: 1px solid rgba(29, 185, 84, 0.2);
+      background: rgba(183, 176, 160, 0.06);
+      border: 1px solid rgba(183, 176, 160, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--spotify);
+      color: var(--discogs);
       text-decoration: none;
       transition: all 0.18s;
       flex-shrink: 0;
     }
 
-    .spotify-btn:hover {
-      background: rgba(29, 185, 84, 0.25);
-      border-color: var(--spotify);
+    .discogs-btn:hover {
+      background: rgba(183, 176, 160, 0.2);
+      border-color: var(--discogs);
       transform: scale(1.2);
+    }
+
+    /* Sold / unavailable */
+    .record-row.sold { opacity: 0.5; }
+    .record-row.sold .record-price { color: var(--text-dim); text-decoration: line-through; }
+
+    .sold-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.1rem 0.35rem;
+      margin-left: 0.4rem;
+      border: 1px solid var(--text-dim);
+      color: var(--text-dim);
+      white-space: nowrap;
+      vertical-align: middle;
     }
 
     /* Empty state */
@@ -480,7 +498,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       .record-price  { grid-column: 2; }
       .record-rating { grid-column: 3; flex-direction: row; align-items: center; }
       .record-genres { grid-column: 2 / -1; }
-      .spotify-cell  { position: absolute; top: 1rem; right: 0.75rem; }
+      .discogs-cell  { position: absolute; top: 1rem; right: 0.75rem; }
     }
 
     @media (max-width: 640px) {
@@ -492,7 +510,7 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       .record-row { grid-template-columns: 3rem 1fr; }
       .record-title { grid-column: 2; }
       .record-rating { grid-column: 2; }
-      .spotify-cell { grid-column: 2; justify-content: flex-start; }
+      .discogs-cell { grid-column: 2; justify-content: flex-start; }
     }
   </style>
 </head>
@@ -559,12 +577,13 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
     <div id="records-list">
       {lpData.map((lp, i) => (
         <div
-          class="record-row"
+          class:list={["record-row", { sold: lp.available === false }]}
           data-genres={JSON.stringify(lp.genres)}
           data-artist={lp.artist}
           data-title={lp.title}
           data-price={String(lp.price)}
           data-rating={String(lp.discogsRating ?? 0)}
+          data-available={String(lp.available !== false)}
         >
           <div class="record-num">{String(i + 1).padStart(3, '0')}</div>
 
@@ -577,24 +596,25 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 
           <div class="record-artist">{lp.artist}</div>
 
-          <div class="record-title">{lp.title}</div>
+          <div class="record-title">
+            {lp.title}
+            {lp.available === false && <span class="sold-badge">Sold</span>}
+          </div>
 
           <div class="record-price">R&nbsp;{lp.price.toLocaleString('en-ZA')}</div>
 
           <div class="record-rating">
-            {lp.discogsRating !== null ? (
+            {lp.discogsVotes ? (
               <div>
                 <div class="rating-row">
                   <div class="rating-ticks">
                     {[1,2,3,4,5].map(n => (
-                      <div class={`rating-tick${n <= Math.round(lp.discogsRating!) ? ' on' : ''}`}></div>
+                      <div class={`rating-tick${n <= Math.round(lp.discogsRating ?? 0) ? ' on' : ''}`}></div>
                     ))}
                   </div>
-                  <span class="rating-score">{lp.discogsRating.toFixed(2)}</span>
+                  <span class="rating-score">{(lp.discogsRating ?? 0).toFixed(2)}</span>
                 </div>
-                {lp.discogsVotes && (
-                  <span class="rating-votes">{lp.discogsVotes.toLocaleString()} votes</span>
-                )}
+                <span class="rating-votes">{lp.discogsVotes.toLocaleString()} votes</span>
               </div>
             ) : (
               <span class="rating-none">—</span>
@@ -606,11 +626,12 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
             {lp.styles.slice(0, 2).map(s => <span class="style-tag">{s}</span>)}
           </div>
 
-          <div class="spotify-cell">
-            {lp.spotifyUrl && (
-              <a href={lp.spotifyUrl} target="_blank" rel="noopener noreferrer" class="spotify-btn" title="Listen on Spotify">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+          <div class="discogs-cell">
+            {lp.discogsUrl && (
+              <a href={lp.discogsUrl} target="_blank" rel="noopener noreferrer" class="discogs-btn" title="View on Discogs">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="12" r="2.5" />
                 </svg>
               </a>
             )}
