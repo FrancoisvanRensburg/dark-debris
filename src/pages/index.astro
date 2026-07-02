@@ -2,6 +2,7 @@
 import lpData from '../data/catalog.json';
 
 const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
+const user = Astro.locals.user;
 ---
 
 <!DOCTYPE html>
@@ -59,6 +60,37 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
       border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 var(--accent-2);
       position: relative;
+    }
+
+    /* Auth (Discogs login) */
+    .auth-bar {
+      position: absolute;
+      top: 1rem;
+      right: 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .auth-user { color: var(--accent-2); }
+    .auth-user strong { color: var(--accent); font-weight: 700; }
+
+    .auth-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      padding: 0.32rem 0.65rem;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .auth-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+    @media (max-width: 640px) {
+      .auth-bar { position: static; justify-content: flex-end; margin-bottom: 1rem; right: auto; top: auto; }
     }
 
     .header-inner {
@@ -518,6 +550,16 @@ const allGenres = [...new Set(lpData.flatMap((lp) => lp.genres))].sort();
 
   <!-- HEADER -->
   <header class="site-header">
+    <div class="auth-bar">
+      {user ? (
+        <>
+          <span class="auth-user">Signed in as <strong>{user.username}</strong></span>
+          <a class="auth-btn" href="/auth/logout">Log out</a>
+        </>
+      ) : (
+        <a class="auth-btn" href="/auth/login">Log in with Discogs</a>
+      )}
+    </div>
     <div class="header-inner">
       <div class="logo">
         <div class="logo-eyebrow">CAT. NO. 001 · LP Catalogue</div>

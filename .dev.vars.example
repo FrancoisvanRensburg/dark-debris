@@ -1,0 +1,15 @@
+# Copy to `.dev.vars` (gitignored) for local `astro dev`.
+# In production these are set as Cloudflare Worker secrets:
+#   wrangler secret put DISCOGS_CONSUMER_KEY
+#   wrangler secret put DISCOGS_CONSUMER_SECRET
+#   wrangler secret put SESSION_SECRET
+
+# Discogs application credentials — create an app at
+# https://www.discogs.com/settings/developers and set its callback URL to
+# http://localhost:4321/auth/callback (and your production URL).
+DISCOGS_CONSUMER_KEY=your_consumer_key
+DISCOGS_CONSUMER_SECRET=your_consumer_secret
+
+# Random 32+ char string used to encrypt session cookies. Generate with:
+#   openssl rand -base64 32
+SESSION_SECRET=change_me_to_a_long_random_string

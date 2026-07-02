@@ -108,12 +108,28 @@ in the catalogue.
 ### PR 1: SSR foundation + Discogs OAuth login
 
 - **Branch:** `feat/discogs-oauth`
-- **Status:** [ ] Not started
-- **Description:** Add the `@astrojs/cloudflare` SSR adapter, the
-  `/auth/discogs` + `/auth/callback` routes, encrypted session cookie, and a
-  "Log in with Discogs" button + logged‑in state in the header.
-- **Files affected:** `astro.config.mjs`, `wrangler.jsonc`, `src/pages/auth/*`,
-  `src/lib/discogs/oauth.ts`, `src/pages/index.astro`
+- **Status:** [x] In progress — implemented & verified in dev (request-token →
+  authorize redirect works against real Discogs; callback/logout paths OK).
+  Remaining: real end-to-end authorize in a browser, and production deploy wiring.
+- **Description:** `@astrojs/cloudflare` SSR adapter (`output: "server"`), the
+  `/auth/login` + `/auth/callback` + `/auth/logout` routes, AES-GCM encrypted
+  session cookie, and a "Log in with Discogs" button + signed-in state in the
+  header.
+- **Files:** `astro.config.mjs`, `wrangler.jsonc`, `src/env.d.ts`,
+  `src/middleware.ts`, `src/lib/env.ts`, `src/lib/session.ts`,
+  `src/lib/discogs/oauth.ts`, `src/lib/discogs/config.ts`, `src/pages/auth/*`,
+  `src/pages/index.astro`, `.dev.vars.example`
+- **Learnings:**
+  - Discogs OAuth 1.0a works with the **PLAINTEXT** signature method over HTTPS
+    (`sig = consumerSecret&tokenSecret`) — no HMAC-SHA1 needed.
+  - Astro 6+ **removed `Astro.locals.runtime.env`**; read bindings/secrets via
+    `import { env } from "cloudflare:workers"` instead.
+  - `wrangler.jsonc` `main` must point at the adapter package entrypoint
+    `@astrojs/cloudflare/entrypoints/server`, not the (not-yet-built) output.
+  - The adapter auto-injects a `SESSION` KV binding (Astro sessions) we don't
+    use; leave the KV namespace unprovisioned.
+  - OAuth endpoint URLs are overridable via `REQUEST_TOKEN_URL` / `AUTHORISE_URL`
+    / `ACCESS_TOKEN_URL`, defaulting to Discogs.
 
 ### PR 2: Wantlist + collection fetch + caching
 
