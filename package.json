@@ -11,8 +11,9 @@
     "fetch-lp-data": "node --env-file-if-exists=.env --experimental-strip-types src/lib/fetch_lp_data.ts"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.38.1",
-    "astro": "^6.0.1",
+    "@astrojs/cloudflare": "^14.1.0",
+    "@astrojs/starlight": "^0.41.2",
+    "astro": "^7.0.5",
     "sharp": "^0.34.2"
   }
 }

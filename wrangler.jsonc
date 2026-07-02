@@ -1,7 +1,18 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dark-debris",
   "compatibility_date": "2026-03-18",
+  // Required by the SSR worker (Web Crypto / Node built-ins used by Astro).
+  "compatibility_flags": ["nodejs_compat"],
+  // Adapter package entrypoint (exists in node_modules; the built worker is
+  // wired up by @astrojs/cloudflare at build time).
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist/client",
+    "binding": "ASSETS"
   }
+  // NOTE: @astrojs/cloudflare auto-injects a SESSION KV binding (Astro sessions).
+  // We don't use it, so we simply don't provision the KV namespace on Cloudflare.
+  // Secrets to set before deploy: DISCOGS_CONSUMER_KEY, DISCOGS_CONSUMER_SECRET,
+  // SESSION_SECRET (`wrangler secret put <NAME>`).
 }
