@@ -134,13 +134,26 @@ in the catalogue.
 ### PR 2: Wantlist + collection fetch + caching
 
 - **Branch:** `feat/discogs-library-fetch`
-- **Status:** [ ] Not started
+- **Status:** [x] In progress — implemented & verified in dev (unauthenticated
+  → 401; build typechecks). Remaining: authenticated fetch against a real
+  logged-in session (browser click-through).
 - **Depends on:** PR 1
-- **Description:** `/api/library` endpoint that fetches (paginated) and caches
-  the logged‑in user's wantlist and collection, returning normalised items
-  (`masterId`, `genres`, `styles`, `thumb`, artist/title) tagged as
+- **Description:** `/api/library` endpoint that fetches (paginated) the
+  logged‑in user's wantlist and collection, returning normalised items
+  (`masterId`, `releaseId`, `genres`, `styles`, `thumb`, artist/title) tagged as
   `wanted`/`owned`.
 - **Files affected:** `src/pages/api/library.ts`, `src/lib/discogs/library.ts`
+- **Learnings:**
+  - Both endpoints share the `basic_information` shape, so one `normalise()`
+    handles both; they differ only by the `wanted`/`owned` tag and the array key
+    (`wants` vs `releases`).
+  - Discogs appends `(2)`-style disambiguation suffixes to artist names and uses
+    a per-artist `join` phrase ("feat.", "&") — `artistName()` strips the former
+    and honours the latter.
+  - Page cap (`MAX_PAGES = 60`, ≈6000 items/list) guards the Worker subrequest
+    limit; a larger library returns `truncated: true` rather than failing.
+  - No KV caching yet (services unprovisioned) — the endpoint fetches live. If a
+    big-library first load proves slow, revisit per-session KV caching here.
 
 ### PR 3: Match engine + wantlist/owned UI
 
