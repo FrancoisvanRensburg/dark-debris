@@ -158,22 +158,45 @@ in the catalogue.
 ### PR 3: Match engine + wantlist/owned UI
 
 - **Branch:** `feat/library-matches`
-- **Status:** [ ] Not started
+- **Status:** [x] Implemented & verified in dev. `masterId` join with
+  artist+title fallback; owned/wanted badges + view filters wired into the
+  catalogue as progressive enhancement (client fetches `/api/library`, tags
+  rows, never blocks page render).
 - **Depends on:** PR 2, plus catalogue `masterId` data (enrichment plan PR 2)
 - **Description:** The `masterId` join (artist+title fallback) producing
   "On your wantlist, in stock" and "Already in your collection" (badged) views.
-- **Files affected:** `src/lib/matching/match.ts`, `src/pages/index.astro` (or a
-  new `matches` view)
+- **Files affected:** `src/lib/matching/match.ts`, `src/pages/index.astro`
+- **Learnings:**
+  - Owned takes precedence over wanted (same master in both lists → badged as
+    owned, kept out of suggestions).
+  - Match runs client-side after `/api/library` resolves, so a slow library
+    fetch never blocks first paint; rows carry `data-master` for the join.
+  - Fallback key normalises artist+title (diacritic strip via NFKD + alnum
+    filter, pressing/format suffixes dropped) for the `masterId === 0` rows.
 
 ### PR 4: Suggested purchases scoring + UI
 
 - **Branch:** `feat/suggested-purchases`
-- **Status:** [ ] Not started
+- **Status:** [x] Implemented & verified in dev. TF-IDF-lift scorer verified
+  against the real catalogue (a stoner/psych profile surfaces All Them Witches,
+  Kyuss, Fu Manchu, etc.; "Stoner Rock" lift 2.62 > broad "Rock" 1.70). Wired
+  into a "◆ For you" view filter.
 - **Depends on:** PR 3
 - **Description:** Genre/style affinity scoring from the combined
   wantlist+collection profile, excluding owned/wanted, rating‑boosted, rendered
-  as a "Suggested for you" ranked list.
+  as a "For you" ranked list (top 30, score-ordered).
 - **Files affected:** `src/lib/matching/suggest.ts`, `src/pages/index.astro`
+- **Learnings:**
+  - Genres/styles are namespaced (`g:` / `s:`) into one tag space; the base-rate
+    idf naturally downweights broad genres so distinctive styles dominate — no
+    manual genre-vs-style weighting needed.
+  - Rating boost is multiplicative and gated on `votes > 0`, so a high rating
+    lifts an on-taste record but can't rescue a zero-overlap one (affinity 0 →
+    score 0) and unreliable 0-vote ratings are ignored.
+  - No per-source weighting: wantlist + collection are pooled as equal votes
+    (see the `suggestion-scoring-no-source-weighting` decision).
+  - Reuses PR 3's `data-match` tags for the owned/wanted exclusion; candidates
+    are in-stock rows with no match tag.
 
 ## Open Questions
 

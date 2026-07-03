@@ -527,6 +527,7 @@ const user = Astro.locals.user;
     .view-pill:hover { border-color: var(--accent-2); color: var(--accent-2); }
     .view-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
     .view-pill span { font-weight: 700; }
+    .view-pill-suggest { border-color: var(--accent-2); color: var(--accent); }
 
     /* Match badges + row states */
     .match-badge {
@@ -662,6 +663,7 @@ const user = Astro.locals.user;
         <span class="match-summary" id="match-summary">Matching your Discogs library…</span>
         <div class="view-filters" id="view-filters" hidden>
           <button class="view-pill active" data-view="all">All</button>
+          <button class="view-pill view-pill-suggest" data-view="suggested" hidden>◆ For you · <span data-count="suggested">0</span></button>
           <button class="view-pill" data-view="wanted">★ Wantlist · <span data-count="wanted">0</span></button>
           <button class="view-pill" data-view="owned">✓ Collection · <span data-count="owned">0</span></button>
           <button class="view-pill" data-view="hide-owned">Hide owned</button>
@@ -688,11 +690,13 @@ const user = Astro.locals.user;
         <div
           class:list={["record-row", { sold: lp.available === false }]}
           data-genres={JSON.stringify(lp.genres)}
+          data-styles={JSON.stringify(lp.styles)}
           data-artist={lp.artist}
           data-title={lp.title}
           data-master={String(lp.masterId ?? 0)}
           data-price={String(lp.price)}
           data-rating={String(lp.discogsRating ?? 0)}
+          data-votes={String(lp.discogsVotes ?? 0)}
           data-available={String(lp.available !== false)}
         >
           <div class="record-num">{String(i + 1).padStart(3, '0')}</div>
@@ -762,6 +766,7 @@ const user = Astro.locals.user;
 
   <script>
     import { buildMatchSets, tagFor } from '../lib/matching/match';
+    import { buildTagWeights, rankCandidates } from '../lib/matching/suggest';
 
     const rows        = Array.from(document.querySelectorAll<HTMLElement>('.record-row'));
     const searchInput = document.getElementById('search-input')  as HTMLInputElement;
@@ -790,22 +795,28 @@ const user = Astro.locals.user;
         const matchOk = viewFilter === 'all'
             || (viewFilter === 'wanted'     && match === 'wanted')
             || (viewFilter === 'owned'      && match === 'owned')
-            || (viewFilter === 'hide-owned' && match !== 'owned');
+            || (viewFilter === 'hide-owned' && match !== 'owned')
+            || (viewFilter === 'suggested'  && !!row.dataset.suggest);
         return matchOk
             && (activeGenre === 'all' || genres.includes(activeGenre))
             && (!q || artist.includes(q) || title.includes(q));
       });
 
-      visible.sort((a, b) => {
-        switch (sortOrder) {
-          case 'artist':      return (a.dataset.artist || '').localeCompare(b.dataset.artist || '');
-          case 'artist-desc': return (b.dataset.artist || '').localeCompare(a.dataset.artist || '');
-          case 'price-asc':   return +a.dataset.price! - +b.dataset.price!;
-          case 'price-desc':  return +b.dataset.price! - +a.dataset.price!;
-          case 'rating-desc': return +b.dataset.rating! - +a.dataset.rating!;
-          default: return 0;
-        }
-      });
+      if (viewFilter === 'suggested') {
+        // Suggested view is always ranked by affinity score, ignoring the sort select.
+        visible.sort((a, b) => (+b.dataset.suggest! || 0) - (+a.dataset.suggest! || 0));
+      } else {
+        visible.sort((a, b) => {
+          switch (sortOrder) {
+            case 'artist':      return (a.dataset.artist || '').localeCompare(b.dataset.artist || '');
+            case 'artist-desc': return (b.dataset.artist || '').localeCompare(a.dataset.artist || '');
+            case 'price-asc':   return +a.dataset.price! - +b.dataset.price!;
+            case 'price-desc':  return +b.dataset.price! - +a.dataset.price!;
+            case 'rating-desc': return +b.dataset.rating! - +a.dataset.rating!;
+            default: return 0;
+          }
+        });
+      }
 
       rows.forEach(r => (r.style.display = 'none'));
       visible.forEach((row, i) => {
@@ -877,18 +888,52 @@ const user = Astro.locals.user;
           }
         });
 
+        const suggested = computeSuggestions(lib);
+
         matchSummary.innerHTML =
+          `<strong>${suggested}</strong> picked for you · ` +
           `<strong>${wantedInStock}</strong> on your wantlist in stock · ` +
           `<strong>${owned}</strong> in your collection`;
         if (lib.truncated) matchSummary.innerHTML += ' · <em>library partially loaded</em>';
 
-        (viewFilters.querySelector('[data-count="wanted"]') as HTMLElement).textContent = String(wanted);
-        (viewFilters.querySelector('[data-count="owned"]')  as HTMLElement).textContent = String(owned);
+        (viewFilters.querySelector('[data-count="suggested"]') as HTMLElement).textContent = String(suggested);
+        (viewFilters.querySelector('[data-count="wanted"]')    as HTMLElement).textContent = String(wanted);
+        (viewFilters.querySelector('[data-count="owned"]')     as HTMLElement).textContent = String(owned);
+        if (suggested > 0) (viewFilters.querySelector('.view-pill-suggest') as HTMLElement).hidden = false;
         viewFilters.hidden = false;
         render();
       } catch {
         matchSummary.textContent = 'Could not load your Discogs library.';
       }
+    }
+
+    // Rank in-stock records the user neither owns nor wants by taste affinity,
+    // tagging the top N with data-suggest (their score) for the "For you" view.
+    const SUGGEST_TOP_N = 30;
+
+    function computeSuggestions(lib: any): number {
+      const taste = [...(lib.wanted || []), ...(lib.owned || [])].map((it: any) => ({
+        genres: it.genres || [],
+        styles: it.styles || [],
+      }));
+      const catalogue = rows.map(r => ({
+        genres: JSON.parse(r.dataset.genres || '[]'),
+        styles: JSON.parse(r.dataset.styles || '[]'),
+      }));
+      const weights = buildTagWeights(taste, catalogue);
+
+      const candidateEls = rows.filter(r => !r.dataset.match && r.dataset.available === 'true');
+      const candidates = candidateEls.map(r => ({
+        genres: JSON.parse(r.dataset.genres || '[]'),
+        styles: JSON.parse(r.dataset.styles || '[]'),
+        rating: +(r.dataset.rating || '0'),
+        votes:  +(r.dataset.votes  || '0'),
+      }));
+
+      rows.forEach(r => { delete r.dataset.suggest; });
+      const ranked = rankCandidates(candidates, weights, SUGGEST_TOP_N);
+      for (const { index, score } of ranked) candidateEls[index].dataset.suggest = String(score);
+      return ranked.length;
     }
 
     viewFilters.addEventListener('click', e => {
